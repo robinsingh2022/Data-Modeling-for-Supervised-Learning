@@ -1,0 +1,260 @@
+---
+title: "Modelling Assignment 2"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+
+```{r}
+setwd('/Users/robin/Desktop/Assignment\ 1\ MSDS\ 410')
+mydata <- read.csv(file="ames_housing_data.csv",head=TRUE,sep=",")
+str(mydata)
+head(mydata)
+names(mydata)
+mydata$TotalFloorSF <- mydata$FirstFlrSF + mydata$SecondFlrSF
+mydata$HouseAge <- mydata$YrSold - mydata$YearBuilt
+mydata$QualityIndex <- mydata$OverallQual * mydata$OverallCond
+mydata$logSalePrice <- log(mydata$SalePrice)
+mydata$price_sqft <- mydata$SalePrice/mydata$TotalFloorSF
+summary(mydata$price_sqft)
+hist(mydata$price_sqft)
+subdat <- subset(mydata, select=c("TotalFloorSF","HouseAge","QualityIndex",
+                                  "price_sqft", "SalePrice","LotArea",
+                                  "BsmtFinSF1","Neighborhood","HouseStyle",
+                                  "LotShape","OverallQual","logSalePrice",
+                                  "TotalBsmtSF","HouseStyle","Zoning","LotShape","SaleCondition","Functional", "LotArea","SubClass","LotFrontage","OverallCond", "YearBuilt", "ExterQual", "ExterCond", "FirstFlrSF", "SecondFlrSF", "BedroomAbvGr", "TotRmsAbvGrd", "GrLivArea", "MiscVal", "YearRemodel"))
+
+str(subdat)
+
+
+subdatnum <- subset(mydata, select=c("TotalFloorSF","HouseAge","QualityIndex",
+                                     "SalePrice","LotArea","OverallQual","logSalePrice"))
+```
+
+```{r}
+#################################################################
+############## Sample Population / Waterfall ###################
+###############################################################
+subdat1=subdat[!(subdat$TotalFloorSF>=4000),]
+subdat2=subdat1[!(subdat1$QualityIndex<=5),]
+subdat3=subdat2[!(subdat2$OverallQual<=2),]
+subdat4=subset(subdat3, Zoning!="C (all)" & Zoning!="I (all)")
+subdat5=subset(subdat4, SaleCondition!="Abnorml" & SaleCondition!="Alloca" & SaleCondition!="Partial")
+subdat6=subset(subdat5, Functional=="Typ")
+subdat7=subset(subdat6, LotArea<=100000)
+subdat7[is.na(subdat7)] = 0
+subdata=subdat7
+counts=c(nrow(subdat),nrow(subdat1),nrow(subdat2),nrow(subdat3),nrow(subdat4),nrow(subdat5),nrow(subdat6),nrow(subdat7),nrow(subdata))
+barplot(counts,names.arg=c("Total","<3500sf", "Ind>5", "Qual>2","No C/I","Norm", "Typ","<100k","NoN/A"),  main="Waterfall")
+```
+
+```{r}
+model1=lm(subdata$SalePrice~subdata$TotalFloorSF)
+model1
+```
+
+```{r}
+plot(subdata$TotalFloorSF,subdata$SalePrice)
+abline(model1)
+summary(model1)
+```
+
+```{r}
+anova(model1)
+
+```
+
+```{r}
+subdata$predict1=predict(model1)
+subdata$residual1=subdata$SalePrice-subdata$predict1
+summary(subdata$residual1)
+print(paste('SD:',sd(subdata$residual1)))
+subdata$standResid1=(subdata$residual1-mean(subdata$residual1))/sd(subdata$residual1)
+```
+
+
+```{r}
+hist(subdata$standResid1)
+plot(subdata$predict1,subdata$standResid1)
+```
+
+
+
+
+
+```{r}
+model2=lm(subdata$SalePrice~subdata$OverallQual)
+model2
+plot(subdata$OverallQual,subdata$SalePrice)
+abline(model2)
+```
+
+
+```{r}
+summary(model2)
+anova(model2)
+```
+
+
+
+
+
+```{r}
+subdata$predict2=predict(model2)
+subdata$residual2=subdata$SalePrice-subdata$predict2
+summary(subdata$residual2)
+print(paste('SD:',sd(subdata$residual2)))
+subdata$standResid2=(subdata$residual2-mean(subdata$residual2))/sd(subdata$residual2)
+```
+
+
+```{r}
+hist(subdata$standResid2)
+plot(subdata$predict2,subdata$standResid2)
+```
+
+```{r}
+model3=lm(subdata$SalePrice~subdata$TotalFloorSF+subdata$OverallQual)
+model3
+summary(model3)
+anova(model3)
+```
+```{r}
+subdata$predict3=predict(model3)
+subdata$residual3=subdata$SalePrice-subdata$predict3
+summary(subdata$residual3)
+print(paste('SD:',sd(subdata$residual3)))
+subdata$standResid3=(subdata$residual3-mean(subdata$residual3))/sd(subdata$residual3)
+```
+
+```{r}
+hist(subdata$standResid3)
+plot(subdata$predict3,subdata$standResid3)
+```
+
+
+
+```{r}
+model4=lm(subdata$SalePrice~subdata$TotalFloorSF+subdata$OverallQual+subdata$HouseAge)
+model4
+summary(model4)
+anova(model4)
+```
+
+```{r}
+subdata$predict4=predict(model4)
+subdata$residual4=subdata$SalePrice-subdata$predict4
+summary(subdata$residual4)
+print(paste('SD:',sd(subdata$residual4)))
+subdata$standResid4=(subdata$residual4-mean(subdata$residual4))/sd(subdata$residual4)
+```
+
+```{r}
+hist(subdata$standResid4)
+plot(subdata$predict4,subdata$standResid4)
+```
+
+
+
+
+```{r}
+model4log=lm(subdata$logSalePrice~subdata$TotalFloorSF+subdata$OverallQual+subdata$HouseAge)
+model4log
+summary(model4log)
+anova(model4log)
+```
+
+```{r}
+subdata$predict4log=predict(model4log)
+subdata$residual4log=subdata$SalePrice-subdata$predict4log
+summary(subdata$residual4log)
+print(paste('SD:',sd(subdata$residual4log)))
+subdata$standResid4log=(subdata$residual4log-mean(subdata$residual4log))/sd(subdata$residual4log)
+hist(subdata$standResid4log)
+plot(subdata$predict4,subdata$standResid4log)
+```
+
+
+
+
+
+```{r}
+model3log=lm(subdata$logSalePrice~subdata$TotalFloorSF+subdata$OverallQual)
+model3log
+summary(model3log)
+anova(model3log)
+```
+```{r}
+subdata$predict3log=predict(model3log)
+subdata$residual3log=subdata$SalePrice-subdata$predict3log
+summary(subdata$residual3log)
+print(paste('SD:',sd(subdata$residual3log)))
+subdata$standResid3log=(subdata$residual3log-mean(subdata$residual3log))/sd(subdata$residual3log)
+hist(subdata$standResid3log)
+plot(subdata$predict3,subdata$standResid3log)
+```
+
+
+```{r}
+model1log=lm(subdata$logSalePrice~subdata$TotalFloorSF)
+model1log
+summary(model1log)
+anova(model1log)
+```
+
+```{r}
+subdata$predict1log=predict(model1log)
+subdata$residual1log=subdata$SalePrice-subdata$predict1log
+summary(subdata$residual1log)
+print(paste('SD:',sd(subdata$residual1log)))
+subdata$standResid1log=(subdata$residual1log-mean(subdata$residual1log))/sd(subdata$residual1log)
+hist(subdata$standResid1log)
+plot(subdata$predict1,subdata$standResid1log)
+```
+
+```{r}
+library("lessR")
+reg_brief(SalePrice~TotalFloorSF+OverallQual+HouseAge,data=subdata)
+```
+
+```{r}
+plot(cooks.distance(model4))
+abline(h = qf(.50, 4, 2266) , col="red")
+abline(h = 4/2270 , col="red")
+cooksd <- cooks.distance(model4)
+influential <- as.numeric(names(cooksd)[(cooksd > (4/2270))])
+
+subdataNoInf <- subdata[-influential, ]
+```
+
+```{r}
+subdataNoInf
+model4NoInf=lm(subdataNoInf$SalePrice~subdataNoInf$TotalFloorSF+subdataNoInf$OverallQual+subdataNoInf$HouseAge)
+model4NoInf
+summary(model4NoInf)
+```
+```{r}
+
+model5NoInf=lm(subdataNoInf$SalePrice~subdataNoInf$TotalFloorSF+subdataNoInf$OverallQual+subdataNoInf$HouseAge+subdataNoInf$LotArea)
+model5NoInf
+summary(model5NoInf)
+anova(model5NoInf)
+```
+
+
+```{r}
+
+subdataNoInf$predict5NoInf=predict(model5NoInf)
+subdataNoInf$residual5NoInf=subdataNoInf$SalePrice-subdataNoInf$predict5NoInf
+summary(subdataNoInf$residual5NoInf)
+print(paste('SD:',sd(subdataNoInf$residual5NoInf)))
+subdataNoInf$standResid5NoInf=(subdataNoInf$residual5NoInf-mean(subdataNoInf$residual5NoInf))/sd(subdataNoInf$residual5NoInf)
+hist(subdataNoInf$standResid5NoInf)
+plot(subdataNoInf$predict5NoInf,subdataNoInf$standResid5NoInf)
+```
+```
+
