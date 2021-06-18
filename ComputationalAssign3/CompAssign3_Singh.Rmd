@@ -1,0 +1,208 @@
+---
+title: "Computational Assignment 3"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+
+```{r }
+setwd('/Users/robin/Desktop/CompAssign3')
+mydata <- read.csv(file="NutritionStudy.csv",head=TRUE,sep=",")
+
+```
+
+
+```{r }
+
+mydata$VitaminUseNum[mydata$VitaminUse == "Regular"] <- 1
+mydata$VitaminUseNum[mydata$VitaminUse == "Occasional"] <- 2
+mydata$VitaminUseNum[mydata$VitaminUse == "No"] <- 3
+mydata$VitaminUseNum
+```
+
+
+```{r}
+mydata
+```
+```{r}
+model1=lm(mydata$Cholesterol~mydata$VitaminUseNum)
+model1
+summary(model1)
+```
+```{r}
+plot(mydata$VitaminUseNum,mydata$Cholesterol)
+```
+```{r}
+plot(model1)
+```
+```{r }
+
+mydata$VitaminUseNum2[mydata$VitaminUse == "Regular"] <- 3
+mydata$VitaminUseNum2[mydata$VitaminUse == "Occasional"] <- 2
+mydata$VitaminUseNum2[mydata$VitaminUse == "No"] <- 1
+
+model1.1=lm(mydata$Cholesterol~mydata$VitaminUseNum2)
+model1.1
+summary(model1.1)
+```
+```{r}
+mydata$vitReg <- ifelse(mydata$VitaminUse == 'Regular', 1, 0)
+mydata$vitOcc <- ifelse(mydata$VitaminUse == 'Occasional', 1, 0)
+mydata$vitNo  <- ifelse(mydata$VitaminUse == 'No',1,0)
+mydata
+```
+
+```{r}
+model2=lm(mydata$Cholesterol~mydata$vitReg+mydata$vitOcc)
+model2
+summary(model2)
+plot(mydata$Cholesterol~mydata$vitReg+mydata$vitOcc)
+```
+
+```{r}
+plot(model2)
+```
+
+```{r}
+mydata$vitReg1[mydata$VitaminUse == 'Regular'] <- 1
+mydata$vitReg1[mydata$VitaminUse == 'Occasional'] <- 0
+mydata$vitReg1[mydata$VitaminUse == 'No'] <- -1
+
+mydata$vitOcc1[mydata$VitaminUse == 'Regular'] <- 0
+mydata$vitOcc1[mydata$VitaminUse == 'Occasional'] <- 1
+mydata$vitOcc1[mydata$VitaminUse == 'No'] <- -1
+mydata
+```
+
+
+```{r}
+modelVitEC=lm(mydata$Cholesterol~mydata$vitReg1+mydata$vitOcc1)
+modelVitEC
+summary(modelVitEC)
+anova(modelVitEC)
+plot(mydata$Cholesterol~mydata$vitReg1+mydata$vitOcc1)
+plot(modelVitEC)
+```
+
+
+
+
+
+
+
+
+```{r}
+mydata$AlcoholNum[mydata$Alcohol == 0] <- 0
+mydata$AlcoholNum[mydata$Alcohol > 0 & mydata$Alcohol < 10] <- 1
+mydata$AlcoholNum[mydata$Alcohol >= 10] <- 2
+mydata
+```
+
+
+```{r}
+mydata$AlcoholNumHi[mydata$Alcohol >= 10] <- 1
+mydata$AlcoholNumHi[mydata$Alcohol == 0] <- -1
+mydata$AlcoholNumHi[mydata$Alcohol > 0 & mydata$Alcohol < 10] <- 0
+
+mydata$AlcoholNumMid[mydata$Alcohol >= 10] <- 0
+mydata$AlcoholNumMid[mydata$Alcohol == 0] <- -1
+mydata$AlcoholNumMid[mydata$Alcohol > 0 & mydata$Alcohol < 10] <- 1
+mydata
+```
+```{r}
+
+mydata$regHi=mydata$vitReg1*mydata$AlcoholNumHi
+mydata$regMid=mydata$vitReg1*mydata$AlcoholNumMid
+mydata$occHi=mydata$vitOcc1*mydata$AlcoholNumHi
+mydata$occMid=mydata$vitOcc1*mydata$AlcoholNumMid
+mydata
+```
+
+```{r}
+fullModel=lm(mydata$Cholesterol~mydata$regHi+mydata$regMid+mydata$occHi+mydata$occMid+mydata$AlcoholNumMid+mydata$AlcoholNumHi+mydata$vitReg1+mydata$vitOcc1)
+reducedModel=lm(mydata$Cholesterol~mydata$regHi+mydata$regMid+mydata$occHi+mydata$occMid)
+```
+
+
+
+```{r}
+fullModel
+summary(fullModel)
+anova(fullModel)
+
+
+
+
+```
+
+```{r}
+reducedModel
+summary(reducedModel)
+anova(reducedModel)
+
+```
+```{r}
+plot(fullModel)
+```
+```{r}
+anova(fullModel,reducedModel)
+```
+
+```{r}
+library(lessR)
+ANOVA(Cholesterol~AlcoholNum,data = mydata)
+boxplot(mydata$VitaminUseNum,mydata$AlcoholNum,mydata$Cholesterol)
+```
+
+```{r}
+ANOVA(Cholesterol~VitaminUseNum,data = mydata)
+```
+
+```{r}
+mydata$Male[mydata$Gender == 'Male'] <- 1
+mydata$Male[mydata$Gender == 'Female'] <- 0
+
+mydata$SmokeBin[mydata$Smoke == 'Yes'] <- 1
+mydata$SmokeBin[mydata$Smoke == 'No'] <- 0
+mydata
+```
+
+```{r}
+redModel2=lm(mydata$Cholesterol~mydata$SmokeBin+mydata$Male)
+fullModel2=lm(mydata$Cholesterol~mydata$regHi+mydata$regMid+mydata$occHi+mydata$occMid+mydata$AlcoholNumMid+mydata$AlcoholNumHi+mydata$vitReg1+mydata$vitOcc1+mydata$SmokeBin+mydata$Male)
+redModel2
+summary(redModel2)
+anova(redModel2)
+```
+```{r}
+anova(fullModel2,fullModel)
+```
+
+```{r}
+smokeModel=lm(mydata$Cholesterol~mydata$SmokeBin)
+summary(smokeModel)
+anova(smokeModel)
+```
+
+```{r}
+genderModel=lm(mydata$Cholesterol~mydata$Male)
+summary(genderModel)
+anova(genderModel)
+```
+```{r}
+anova(redModel2,smokeModel)
+```
+
+```{r}
+anova(redModel2,genderModel)
+```
+
+```{r}
+
+ANOVA(Cholesterol~SmokeBin, data=mydata)
+```
+
