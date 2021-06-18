@@ -1,0 +1,181 @@
+---
+title: "Computational Assignment 1"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+1. Given the variables in this dataset, which variables can be considered explanatory (X) and which considered response (Y)?  Can any variables take on both roles?   What is the population of interest for this problem (yes – this is a trick question!)?
+
+Explanatory: Region, Population, Household Income, Highschool, College, and Two Parents
+Response: Insured, Obese, Heavy Drinkers, Smokers, Physical Activity
+Both: Highschool, Household Income, College, and Physical Activity
+Population of Interest: US population
+
+2. For the duration of this assignment, let’s have HOUSEHOLDINCOME be the response variable (Y).  Also, please consider the STATE, REGION and POPULATION variables to be demographic variables.  Obtain basic summary statistics (i.e. n, mean, std dev.) for each variable. Report these in a table.  Then, obtain all possible scatterplots relating the non-demographic explanatory variables to the response variable (Y).   
+```{r}
+mydata <- read.csv(file="USStates.csv",head=TRUE,sep=",")
+cols=c("Population", "HighSchool","College","PhysicalActivity", "Obese", "Smokers", "NonWhite","HeavyDrinkers","TwoParents", "Insured" )
+summary(mydata[cols])
+
+plot(mydata$Population,mydata$HouseholdIncome)
+plot(mydata$HighSchool,mydata$HouseholdIncome)
+plot(mydata$College,mydata$HouseholdIncome)
+plot(mydata$PhysicalActivity,mydata$HouseholdIncome)
+plot(mydata$Obese,mydata$HouseholdIncome)
+plot(mydata$Smokers,mydata$HouseholdIncome)
+plot(mydata$NonWhite,mydata$HouseholdIncome)
+plot(mydata$HeavyDrinkers,mydata$HouseholdIncome)
+plot(mydata$TwoParents,mydata$HouseholdIncome)
+plot(mydata$Insured,mydata$HouseholdIncome)
+```
+3. Obtain all possible pairwise Pearson Product Moment correlations of the non-demographic variables with Y and report the correlations in a table.  Given the scatterplots from step 2) and the correlation coefficients, is simple linear regression an appropriate analytical method for this data?   Why or why not?  
+
+The variables College, Obese, Insured, and Smokers all have some linear relationships to House Income, as their absolute values are greater than 0.5, and hence would be good to measure together towards their combined impact to the Y variable.
+
+```{r}
+print(paste("Population:",cor(mydata$Population, mydata$HouseholdIncome, method = "pearson")))
+print(paste("HighSchool:",cor(mydata$HighSchool, mydata$HouseholdIncome, method = "pearson")))
+print(paste("College:",cor(mydata$College, mydata$HouseholdIncome, method = "pearson")))
+print(paste("PhysicalActivity:",cor(mydata$PhysicalActivity, mydata$HouseholdIncome, method = "pearson")))
+print(paste("Obese:",cor(mydata$Obese, mydata$HouseholdIncome, method = "pearson")))
+print(paste("NonWhite:",cor(mydata$NonWhite, mydata$HouseholdIncome, method = "pearson")))
+print(paste("HeavyDrinkers:",cor(mydata$HeavyDrinkers, mydata$HouseholdIncome, method = "pearson")))
+print(paste("TwoParents:",cor(mydata$TwoParents, mydata$HouseholdIncome, method = "pearson")))
+print(paste("Insured:",cor(mydata$Insured, mydata$HouseholdIncome, method = "pearson")))
+print(paste("Smokers:",cor(mydata$Smokers, mydata$HouseholdIncome, method = "pearson")))
+```
+4. 	Fit a simple linear regression model to predict Y using the COLLEGE explanatory variable.  Use the base STAT lm(Y~X) function.  Why would you want to start with this explanatory variable?   Call this Model 1.   Report the results of Model 1 in equation form and interpret each coefficient of the model in the context of this problem.  Report the ANOVA table and model fit statistic, R-squared.  Use the summary statistics from steps 2) and 3) to verify, by hand computation, the estimates for the slope and intercept.
+
+You want to start with the College variable because it is the variable with the highest Pearson Correlation value to Household Income.
+
+```{r}
+model1=lm(mydata$HouseholdIncome~mydata$College) 
+model1
+library(car)
+Anova(model1)
+summary(model1)
+aov(mydata$HouseholdIncome~mydata$College)
+#print(paste("r^2:",summary(model1)$r.squared))
+
+```
+Equation: y = 23.0664 + 0.9801 * x
+23.0664 is the initial amount for y when the x variable equals zero.
+0.9801 is the additional amount added for every unit change in the x variable.
+In this case, the x variable represents the percentage of people who have gone to college, and y represents the household income of that person, or at least an estimate. 
+
+By hand:
+```{r}
+slope=cor(mydata$College,mydata$HouseholdIncome) *(sd(mydata$HouseholdIncome)/sd(mydata$College))
+print(paste("slope:",slope))
+intercept=mean(mydata$HouseholdIncome)-slope*mean(mydata$College)
+print(paste("intercept:",intercept))
+```
+
+5.	Write R-code to calculate and create a variable of predicted values based on Model 1.  Use the predicted values and the original response variable Y to calculate and create a variable of residuals (i.e. residual = Y – Y_hat = observed minus predicted) for Model 1.   Using the original Y variable, the predicted, and/or residual variables, write R-code to:
+
+```{r}
+#mydata$predictedY = intercept + (slope * mydata$College)
+mydata$Y_hat=predict(model1)
+mydata$residual=mydata$HouseholdIncome-mydata$Y_hat
+```
+•	Square each of the residuals and then add them up.   This is called sum of squared residuals, or sums of squared errors.
+```{r}
+sse=sum((mydata$residual)^2)
+print(paste('sse:',sse))
+```
+•	Deviate the mean of the Y’s from the value of Y for each record (i.e. Y – Y_bar).  Square each of the deviations and then add them up.  This is called sum of squares total.
+```{r}
+
+sst=sum((mydata$HouseholdIncome-mean(mydata$HouseholdIncome))^2)
+print(paste('sst:',sst))
+```
+•	Deviate the mean of the Y’s from the value of predicted (Y_hat) for each record (i.e. Y_hat – Y_bar).  Square each of these deviations and then add them up.  This is called the sum of squares due to regression.
+```{r}
+ssr=sum((mydata$Y_hat-mean(mydata$HouseholdIncome))^2)
+print(paste('ssr:',ssr))
+```
+•	Calculate a statistic that is: (Sum of Squares due to Regression) / (Sum of squares Total) 
+```{r}
+ssr/sst
+```
+R^2, Sum of squared residuals, and sum of squared errors match
+
+
+
+
+6.	Fit a multiple linear regression model to predict Y using COLLEGE and INSURED as the explanatory variables.  Use the base lm(Y~X) function.  Call this Model 2.   Report the results of Model 2 in equation form, interpret each coefficient of the model in the context of this problem, and report the model fit statistic, R-squared.  How have the coefficients and their interpretations changed?  Calculate the change in R-squared from Model 1 to Model 2 and interpret this value.  For this specific problem, is it OK to use the hypothesis testing results to determine if the additional explanatory variable should be retained or not?   Think statistically using first principals.  Discuss.  NOTE:  The topic of hypothesis testing in regression is the focus of Module 2 – you should NOT need to read anything about hypothesis testing to answer this.
+```{r}
+model2=lm(mydata$HouseholdIncome~mydata$College + mydata$Insured)
+model2
+summary(model2)
+```
+Equation: y = 9.6728 + 0.8411*x1 + 0.2206 * x2
+9.6728 is the initial amount for y when the x variables equal zero; y-intercept
+0.8411 is the additional amount added for every unit change in the x1 variable (College).
+0.2206 is the additional amount added for every unit change in the x2 variable (Insured).
+In this case, the x1 variable represents the percentage of people who have gone to college, the x2 variable represents the percentage of people who have been insured and y would represent the household income of that person, or at least an estimate. 
+
+R^2=0.48
+The coefficient for College has decreased from 0.9801 to 0.8411. This is due to the impact the other variable, whether or not the person is insured, now has an impact on the household income value as well. The y-intercept value has significantly decreased from 23.0664 to 9.6728. This is the value if both variables x1 and x2 were zero.
+Difference in R^2 from model 1 to model 2:
+
+```{r}
+summary(model1)$r.squared-summary(model2)$r.squared
+```
+For this problem, it may not be so beneficial to use hypothesis testing to determine whether or not the additional explanatory value should be retained or not. This is because the difference in the r^2 values is very little, however, the question being asked is the combined impact of variables on the household income, and we need to find the impact of the variables collectively to see how the various x variables impact the Y.
+
+
+
+
+
+
+7.   In a sequential fashion, continue to add in the non-demographic variables into the prediction model, one variable at a time.   Make a table summarizing the change in R-squared that is associated with each variable added.  Based on this information, what variables should be retained for a “best” predictive model?  What criteria seems appropriate to you?    
+```{r}
+print(paste("College r^2:",summary(model1)$r.squared))
+print(paste("College + Insured r^2:",summary(model2)$r.squared))
+model3=lm(mydata$HouseholdIncome~mydata$College + mydata$Insured+mydata$HighSchool)
+print(paste("College + Insured + HighSchool r^2:",summary(model3)$r.squared))
+model4=lm(mydata$HouseholdIncome~mydata$College + mydata$Insured+mydata$HighSchool + mydata$Smokers)
+print(paste("College + Insured + HighSchool + Smokers r^2:",summary(model4)$r.squared))
+model5=lm(mydata$HouseholdIncome~mydata$College + mydata$Insured+mydata$HighSchool+mydata$Smokers +mydata$PhysicalActivity)
+print(paste("College + Insured + HighSchool + Smokers + Physical Activity r^2:",summary(model5)$r.squared))
+model6=lm(mydata$HouseholdIncome~mydata$College + mydata$Insured+mydata$HighSchool+mydata$Smokers +mydata$PhysicalActivity + mydata$Obese)
+print(paste("College + Insured + HighSchool + Smokers + Physical Activity + Obese r^2:",summary(model6)$r.squared))
+model7=lm(mydata$HouseholdIncome~mydata$College + mydata$Insured+mydata$HighSchool+mydata$Smokers +mydata$PhysicalActivity + mydata$Obese + mydata$NonWhite)
+print(paste("College + Insured + HighSchool + Smokers + Physical Activity + Obese + NonWhite r^2:",summary(model7)$r.squared))
+model8=lm(mydata$HouseholdIncome~mydata$College + mydata$Insured+mydata$HighSchool+ mydata$Smokers +mydata$PhysicalActivity + mydata$Obese + mydata$NonWhite +mydata$HeavyDrinkers)
+print(paste("College + Insured + HighSchool + Smokers + Physical Activity + Obese + NonWhite + HeavyDrinkers r^2:",summary(model8)$r.squared))
+model9=lm(mydata$HouseholdIncome~mydata$College + mydata$Insured+mydata$HighSchool+ mydata$Smokers +mydata$PhysicalActivity + mydata$Obese + mydata$NonWhite +mydata$HeavyDrinkers + mydata$TwoParents)
+print(paste("College + Insured + HighSchool + Smokers + Physical Activity + Obese + NonWhite + HeavyDrinkers + TwoParents r^2:",summary(model9)$r.squared))
+
+
+```
+The variables that should be retained for the best predictive model are College, Non-White, and perhaps Two Parents, because they have very low P values. Although, the p value for Two Parents is about 0.06, so could be omitted, but it is still quite close to 0.05. In my opinion it should be left in the model to see how it impacts Household Income.
+
+
+```{r}
+
+summary(model9)
+```
+During this problem, practice interpreting coefficients for each model.  Do any of the interpretations become counter intuitive as you fit more and more complex models?  What does, or would, this mean for the model being developed?  You do not need to report all of the coefficient interpretations, but this is a general question to contemplate and skill to use in model determination.   Please write a short summary of your conclusions here.
+Two variables that stood out to me as being counter intuitive are the variables Obese and the variable Physical Activity. If one is physically active, they are less likely to be obese. I believe one should be omitted as it is redundant in the model. One could also argue that High School and College are somewhat redundant, as to go to college one must have had completed High School.
+
+
+
+8. 	Now that you have a sense of which explanatory variables contribute to explaining HOUSEHOLDINCOME, refit a model using only the set of variables you consider to be appropriate to model Y.  Report this model, interpret the coefficients, and interpret R-squared in the context of this problem.  Discuss why is it necessary to refit this model.   
+	Model after omitting the Obese and High School Variables:
+I believe the variables Obese and High School are already accounted for in the variables Physical Activity and College respectively. Adding those variables created some redundancy in the data. Omitting those variables could allow for a better analysis. The R^2 value has also barely changed, resulting in 0.7312. This is a very small change compared to having all of the variables within, which had an R^2 value of 0.735. If this was a bigger dataset, adding redundant variables could result in bias in a model. Hence, removing the variables even though it decreases the accuracy of this model slightly, may be beneficial in other models which may cause the model to overestimate some features. 
+```{r}
+model10=lm(mydata$HouseholdIncome~mydata$College +  mydata$Smokers +mydata$PhysicalActivity +  mydata$NonWhite +mydata$HeavyDrinkers + mydata$TwoParents)
+summary(model10)
+```
+9.	Given what you’ve learned from this modeling endeavor, what overall conclusions do you draw?   What is the “Story” contained in this data?  What have you learned?  What are your Prescriptive Recommendations for action based on this evidence?   Finally, feel free to reflect on what you’ve learned from a modeling perspective.
+Throughout this assignment, I learned how various variable impact household income within this dataset and analyzed some correlations within the data. However, correlation does not mean causation. Some variable impacted the model more than others, as indicated through the P-values, found within the summaries of the models. This assignment allowed me to become more comfortable working with linear regression models within R Studio. Although I had some experience in the past through MSDS 401, this assignment game me a refresh on how to use the different functions within the software. 
+	This assignment also briefed me on the importance of preprocessing your data in order to create a more accurate model. I felt that having both obesity and physical activity as variables in the model and both College and High School as variables in the model, may cause some overestimation within the linear regression model. With the little change in the R^2 value, it shows that if such variables existed in bigger datasets, it could cause some form of over estimation of some variables, leading to less accurate models. 
+
+
+
