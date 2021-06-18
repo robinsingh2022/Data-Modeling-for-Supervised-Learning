@@ -1,0 +1,132 @@
+---
+title: "CompAssign6"
+output: html_document
+---
+
+```{r }
+mydata <- read.csv(file="STRESS.csv",head=TRUE,sep=",")
+mydata
+```
+
+```{r}
+hist(mydata$STRESS)
+summary(mydata$STRESS)
+qqnorm(mydata$STRESS)
+```
+
+
+```{r}
+model1=lm(mydata$STRESS~mydata$COHES+mydata$ESTEEM+mydata$GRADES+mydata$SATTACH)
+model1
+summary(model1)
+plot(model1)
+mydata$Y_hat=predict(model1)
+hist(mydata$Y_hat)
+plot(mydata$STRESS, mydata$Y_hat)
+
+```
+
+```{r}
+mydata$Stress2=mydata$STRESS
+mydata$Stress2[mydata$Stress2 == 0] <- 0.0001
+mydata$transfromed_Y=log(mydata$Stress2)
+model2=lm(mydata$transfromed_Y~mydata$COHES+mydata$ESTEEM+mydata$GRADES+mydata$SATTACH)
+model2
+summary(model2)
+plot(model2)
+mydata$lnY_hat=predict(model2)
+hist(mydata$lnY_hat)
+```
+```{r}
+poissonmodel=glm(mydata$STRESS~mydata$COHES+mydata$ESTEEM+mydata$GRADES+mydata$SATTACH, family="poisson")
+poissonmodel
+summary(poissonmodel)
+
+```
+```{r}
+poissonmodel2=glm(mydata$STRESS~mydata$COHES+mydata$ESTEEM+mydata$GRADES+mydata$SATTACH, family=quasipoisson)
+poissonmodel2
+summary(poissonmodel2)
+
+```
+
+```{r}
+mydata$Group=ifelse(mydata$COHES<(mean(mydata$COHES)-sd(mydata$COHES)), 1, ifelse(mydata$COHES>mean(mydata$COHES)+sd(mydata$COHES),3,2))
+
+length(which(mydata$Group==1))
+length(which(mydata$Group==2))
+length(which(mydata$Group==3))
+```
+
+```{r}
+low=exp(2.73446 - 0.01292*41.62096 - 0.02369*mean(mydata$ESTEEM) - 0.02347*mean(mydata$GRADES) - 0.01648*mean(mydata$SATTACH))
+high=exp(2.73446 - 0.01292*64.38757 - 0.02369*mean(mydata$ESTEEM) - 0.02347*mean(mydata$GRADES) - 0.01648*mean(mydata$SATTACH))
+low
+high
+```
+```{r}
+AIC(poissonmodel)
+AIC(poissonmodel2)
+```
+
+```{r}
+BIC(poissonmodel)
+BIC(poissonmodel2)
+```
+
+```{r}
+mydata$poissonpredict=log(predict(poissonmodel))
+plot(mydata$poissonpredict,resid(poissonmodel))
+```
+
+```{r}
+mydata$Y_Ind=ifelse(mydata$STRESS==0,0,1)
+mydata
+```
+```{r}
+library(aod)
+logitReg=glm(mydata$Y_Ind~mydata$COHES+mydata$ESTEEM+mydata$GRADES+mydata$SATTACH, family=binomial)
+logitReg
+summary(logitReg)
+wald.test(b = coef(logitReg), Sigma = vcov(logitReg), Terms = 2:5)
+library(pscl)
+pR2(logitReg)
+```
+```{r}
+mydata$logitPredict=exp(3.51673-0.02073*mydata$COHES-0.01887*mydata$ESTEEM-0.02549*mydata$GRADES-0.02773*mydata$SATTACH)
+predictionlogit=mydata$logitPredict/(1+mydata$logitPredict)
+
+mydata$poissionPredict=exp(2.73446 - 0.01292*mydata$COHES - 0.02369*mydata$ESTEEM - 0.02347*mydata$GRADES - 0.01648*mydata$SATTACH)
+poissionPredict=exp(2.73446 - 0.01292*mydata$COHES - 0.02369*mydata$ESTEEM - 0.02347*mydata$GRADES - 0.01648*mydata$SATTACH)
+mydata$predictionZip=ifelse(predictionlogit<0.5,0,poissionPredict)
+mydata$residZip=resid(poissonmodel,type='deviance')
+plot(mydata$predictionZip,mydata$STRESS)
+hist(predictionlogit)
+plot(mydata$STRESS, mydata$STRESS-mydata$predictionZip)
+```
+
+```{r}
+zeroinfmodel=zeroinfl(mydata$STRESS~mydata$COHES+mydata$ESTEEM+mydata$GRADES+mydata$SATTACH)
+summary(zeroinfmodel)
+```
+```{r}
+zeroinfmodel2=zeroinfl(mydata$STRESS~mydata$COHES+mydata$ESTEEM|mydata$GRADES+mydata$SATTACH, dist = "negbin")
+summary(zeroinfmodel2)
+```
+```{r}
+zeroinfmodel3=zeroinfl(mydata$STRESS~mydata$COHES+mydata$ESTEEM|mydata$GRADES+mydata$SATTACH, )
+summary(zeroinfmodel3)
+```
+
+
+```{r}
+AIC(zeroinfmodel)
+AIC(zeroinfmodel2)
+
+```
+
+```{r}
+BIC(zeroinfmodel)
+BIC(zeroinfmodel2)
+
+```
