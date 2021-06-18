@@ -1,0 +1,146 @@
+---
+title: "CompAssign5"
+output: html_document
+---
+
+```{r}
+setwd('/Users/robin/Desktop/CompAssign5')
+mydata <- read.csv(file="RELIGION.csv",head=TRUE,sep=",")
+mydata
+```
+
+```{r}
+sum(mydata$RELSCHOL)/nrow(mydata)
+
+```
+
+```{r}
+sum(mydata$RELSCHOL)/(nrow(mydata)-sum(mydata$RELSCHOL))
+```
+
+```{r}
+1-(sum(mydata$RELSCHOL)/nrow(mydata))
+```
+```{r}
+(nrow(mydata)-sum(mydata$RELSCHOL))/sum(mydata$RELSCHOL)
+```
+
+```{r}
+relrace=table(mydata$RELSCHOL,mydata$RACE)
+names(dimnames(relrace)) <- c("Religious", "Race")
+relrace
+```
+
+```{r}
+prop.table(relrace)
+```
+
+```{r}
+prop.table(relrace, 1)
+```
+
+```{r}
+prop.table(relrace, 2)
+```
+
+```{r}
+plot(mydata$INCOME,mydata$RELSCHOL)
+```
+```{r}
+library(ggplot2)
+library(Hmisc)
+ggfreqScatter(mydata$INCOME,mydata$RELSCHOL)
+```
+
+```{r}
+mydata$D_Income=ifelse(mydata$INCOME>=6,1,0)
+```
+
+```{r}
+D_IncRace=table(mydata$D_Income, mydata$RELSCHOL)
+names(dimnames(D_IncRace)) <- c("D_Income", "RELSCHOL")
+D_IncRace
+```
+
+```{r}
+prop.table(D_IncRace, 2)
+```
+
+```{r}
+ggfreqScatter(mydata$ATTEND,mydata$RELSCHOL)
+```
+
+```{r}
+ATTRace=table(mydata$ATTEND, mydata$RELSCHOL)
+names(dimnames(ATTRace)) <- c("ATTEND", "RELSCHOL")
+ATTRace
+```
+
+```{r}
+prop.table(ATTRace, 1)
+```
+
+```{r}
+mydata=na.omit(mydata) 
+```
+
+
+```{r}
+model1=glm(mydata$RELSCHOL~mydata$RACE)
+model1
+```
+
+```{r}
+summary(model1)
+```
+```{r}
+BIC(model1)
+```
+
+```{r}
+model2=glm(mydata$RELSCHOL~mydata$INCOME)
+model2
+print(paste("BIC",BIC(model2)))
+```
+
+
+```{r}
+mydata$PI=predict(model2)
+
+ggfreqScatter(mydata$INCOME,mydata$PI)
+```
+```{r}
+model3=glm(mydata$RELSCHOL~mydata$ATTEND)
+model3
+print(paste("BIC",BIC(model3)))
+```
+
+```{r}
+mydata$PI2=predict(model3)
+
+ggfreqScatter(mydata$INCOME,mydata$PI2)
+```
+```{r}
+model4=glm(mydata$RELSCHOL~mydata$RACE+mydata$INCOME+mydata$ATTEND)
+model4
+print(paste("BIC",BIC(model4)))
+```
+
+```{r}
+mydata$P=predict(model1)
+predictTbl=table(mydata$P,mydata$RELSCHOL)
+names(dimnames(predictTbl)) <- c("Model1", "RELSCHOL")
+predictTbl
+```
+```{r}
+
+predictTbl=table(mydata$PI,mydata$RELSCHOL)
+names(dimnames(predictTbl)) <- c("Model2", "RELSCHOL")
+predictTbl
+```
+```{r}
+
+predictTbl=table(mydata$PI2,mydata$RELSCHOL)
+names(dimnames(predictTbl)) <- c("Model3", "RELSCHOL")
+predictTbl
+```
