@@ -1,0 +1,106 @@
+---
+title: "Comp Assignment 2"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+
+```{r }
+setwd('/Users/robin/Desktop/Assignment\ 1\ MSDS\ 410')
+mydata <- read.csv(file="ames_housing_data.csv",head=TRUE,sep=",")
+
+str(mydata)
+head(mydata)
+names(mydata)
+mydata$TotalFloorSF <- mydata$FirstFlrSF + mydata$SecondFlrSF
+mydata$HouseAge <- mydata$YrSold - mydata$YearBuilt
+mydata$QualityIndex <- mydata$OverallQual * mydata$OverallCond
+mydata$logSalePrice <- log(mydata$SalePrice)
+mydata$price_sqft <- mydata$SalePrice/mydata$TotalFloorSF
+summary(mydata$price_sqft)
+hist(mydata$price_sqft)
+subdat <- subset(mydata, select=c("TotalFloorSF","HouseAge","QualityIndex",
+                                  "price_sqft", "SalePrice","LotArea",
+                                  "BsmtFinSF1","Neighborhood","HouseStyle",
+                                  "LotShape","OverallQual","logSalePrice",
+                                  "TotalBsmtSF","HouseStyle","Zoning","LotShape","SaleCondition","Functional", "LotArea","SubClass","LotFrontage","OverallCond", "YearBuilt", "ExterQual", "ExterCond", "FirstFlrSF", "SecondFlrSF", "BedroomAbvGr", "TotRmsAbvGrd", "GrLivArea", "MiscVal", "YearRemodel"))
+
+str(subdat)
+
+
+subdatnum <- subset(mydata, select=c("TotalFloorSF","HouseAge","QualityIndex",
+                                     "SalePrice","LotArea","OverallQual","logSalePrice"))
+```
+```{r}
+#################################################################
+############## Sample Population / Waterfall ###################
+###############################################################
+subdat1=subdat[!(subdat$TotalFloorSF>=4000),]
+subdat2=subdat1[!(subdat1$QualityIndex<=5),]
+subdat3=subdat2[!(subdat2$OverallQual<=2),]
+subdat4=subset(subdat3, Zoning!="C (all)" & Zoning!="I (all)")
+subdat5=subset(subdat4, SaleCondition!="Abnorml" & SaleCondition!="Alloca" & SaleCondition!="Partial")
+subdat6=subset(subdat5, Functional=="Typ")
+subdat7=subset(subdat6, LotArea<=100000)
+subdat7[is.na(subdat7)] = 0
+subdat8=subdat7
+counts=c(nrow(subdat),nrow(subdat1),nrow(subdat2),nrow(subdat3),nrow(subdat4),nrow(subdat5),nrow(subdat6),nrow(subdat7),nrow(subdat8))
+barplot(counts,names.arg=c("Total","<3500sf", "Ind>5", "Qual>2","No C/I","Norm", "Typ","<100k","NoN/A"),  main="Waterfall")
+```
+
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+```{r }
+model3=lm(subdat7$SalePrice~subdat7$YearBuilt + subdat7$YearRemodel )
+model3
+summary(model3)
+```
+
+
+```{r}
+subdat7$Y_hat=predict(model3)
+subdat7$residual=subdat7$SalePrice-subdat7$Y_hat
+```
+
+```{r}
+ssr=sum((subdat7$Y_hat-mean(subdat7$SalePrice))^2)
+print(paste('ssr:',ssr))
+```
+```{r}
+sse=sum((subdat7$residual)^2)
+print(paste('sse:',sse))
+```
+```{r}
+sst=sum((subdat7$SalePrice-mean(subdat7$SalePrice))^2)
+print(paste('sst:',sst))
+
+```
+
+```{r }
+model4=lm(subdat7$SalePrice~subdat7$QualityIndex + subdat7$OverallCond +subdat7$OverallQual+subdat7$GrLivArea + subdat7$LotArea +subdat7$TotalFloorSF + subdat7$BedroomAbvGr + subdat7$LotFrontage + subdat7$YearBuilt + subdat7$YearRemodel)
+model4
+summary(model4)
+```
+
+
+
+```{r}
+subdat7$Y_hat2=predict(model4)
+subdat7$residual2=subdat7$SalePrice-subdat7$Y_hat2
+
+```
+
+
+
+```{r}
+sse2=sum((subdat7$residual2)^2)
+print(paste('sse2:',sse2))
+```
+
+
+
+
