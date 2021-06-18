@@ -1,0 +1,380 @@
+---
+title: "Modelling Assignment 3"
+output: html_document
+---
+
+
+(1)	Preparing the Categorical Variables
+This assignment assumes you are using the same Sample Population as from the previous modeling assignment.  If you need to make adjustments to the Sample Population, please do so and report what you’ve done.   Let Y = sale price be the dependent or response variable.  Examine the categorical variables in the Ames Data Set.  On first principles (i.e. your reasoning) which seem most likely to be related to, or predictive of, SALESPRICE?    For those categorical variables that seem most reasonable or interesting, find summary statistics for Y (i.e. means, medians, std dev., etc) BY the levels of the categorical variable.   Which categorical variable(s) have the greatest mean difference between levels?   Why is this an important quality to look for?   Create dummy coded (or effect coded, if you prefer) variables for the interesting categorical variables that may be predictive of SALEPRICE.  Keep in mind, the more categorical variables you want to include in your analysis, the more work required in dealing with those variables.  This work goes up exponentially with the number of categorical variables retained and their numbers of levels.   Be brutally honest about the potential for a categorical variable to be predictive.  If you must, fit regression models to determine R-squared for the categorical variables of interest, and then select only those that have reasonably large R-squared values.  Report the summary statistics for SALESPRICE by group for these interesting categorical variables that you wish to retain for further analysis.
+
+
+```{r}
+setwd('/Users/robin/Desktop/Assignment\ 1\ MSDS\ 410')
+mydata <- read.csv(file="ames_housing_data.csv",head=TRUE,sep=",")
+
+str(mydata)
+head(mydata)
+names(mydata)
+mydata$TotalFloorSF <- mydata$FirstFlrSF + mydata$SecondFlrSF
+mydata$HouseAge <- mydata$YrSold - mydata$YearBuilt
+mydata$QualityIndex <- mydata$OverallQual * mydata$OverallCond
+mydata$logSalePrice <- log(mydata$SalePrice)
+mydata$price_sqft <- mydata$SalePrice/mydata$TotalFloorSF
+summary(mydata$price_sqft)
+hist(mydata$price_sqft)
+mydata$TotalSqftCalc <- mydata$BsmtFinSF1+mydata$BsmtFinSF2+mydata$GrLivArea;
+subdat <- subset(mydata, select=c("TotalFloorSF","HouseAge","QualityIndex",
+                                  "price_sqft", "SalePrice","LotArea",
+                                  "BsmtFinSF1","Neighborhood","HouseStyle",
+                                  "LotShape","OverallQual","logSalePrice",
+                                  "TotalBsmtSF","HouseStyle","Zoning","LotShape","SaleCondition","Functional", "LotArea","SubClass","LotFrontage","OverallCond", "YearBuilt", "ExterQual", "ExterCond", "FirstFlrSF", "SecondFlrSF", "BedroomAbvGr", "TotRmsAbvGrd", "GrLivArea", "MiscVal", "YearRemodel","logSalePrice","TotalSqftCalc"))
+
+str(subdat)
+
+
+subdatnum <- subset(mydata, select=c("TotalFloorSF","HouseAge","QualityIndex",
+                                     "SalePrice","LotArea","OverallQual","logSalePrice"))
+```
+
+```{r}
+#################################################################
+############## Sample Population / Waterfall ###################
+###############################################################
+subdat1=subdat[!(subdat$TotalFloorSF>=4000),]
+subdat2=subdat1[!(subdat1$QualityIndex<=5),]
+subdat3=subdat2[!(subdat2$OverallQual<=2),]
+subdat4=subset(subdat3, Zoning!="C (all)" & Zoning!="I (all)")
+subdat5=subset(subdat4, SaleCondition!="Abnorml" & SaleCondition!="Alloca" & SaleCondition!="Partial")
+subdat6=subset(subdat5, Functional=="Typ")
+subdat7=subset(subdat6, LotArea<=100000)
+subdat7[is.na(subdat7)] = 0
+subdata=subdat7
+counts=c(nrow(subdat),nrow(subdat1),nrow(subdat2),nrow(subdat3),nrow(subdat4),nrow(subdat5),nrow(subdat6),nrow(subdat7),nrow(subdata))
+barplot(counts,names.arg=c("Total","<3500sf", "Ind>5", "Qual>2","No C/I","Norm", "Typ","<100k","NoN/A"),  main="Waterfall")
+```
+```{r}
+subdata$Style1[subdata$HouseStyle == '1Story'] <- 1
+subdata$Style1[subdata$HouseStyle != '1Story'] <- 0
+subdata$Style2[subdata$HouseStyle == '2Story'] <- 1
+subdata$Style2[subdata$HouseStyle != '2Story'] <- 0
+subdata$Style1
+subdata$Style2
+subdata
+```
+(2)	The Predictive Modeling Framework
+A defining feature of predictive modeling is assessing model performance out-of-sample.  We will use uniform random number to split the sample into a 70/30 train/test split.  With a train/test split we now have two data sets: one for in-sample model development and one for out-of-sample model assessment.  
+
+Our 70/30 training/test split is the most basic form of cross-validation.  We will 'train' each model by estimating the models on the 70% of the data identified as the training data set, and we will 'test' each model by examining the predictive accuracy on the 30% of the data.  In R will estimate our models using the lm() function, and we will be able to apply those linear models using the R function predict().  You will want to read the R help page for the R function predict().  In particular, pay attention to the newdata argument.  Your test data set is your new data.
+
+Show a table of observation counts for your train/test data partition in your data section.
+dim(my.data)[1] = 2270
+dim(train.df)[1]=1594
+dim(test.df)[1]=676
+dim(train.df)[1]+dim(test.df)[1]=2270
+
+(3)	Model Identification by Automated Variable Selection
+Create a pool of candidate predictor variables.  This pool of candidate predictor variables needs to have at least 15-20 predictor variables, you can have more.  The variables should be a mix of discrete and continuous variables.  You can include dummy coded or effect coded variables, but not the original categorical variables.   Include a well-designed list or table of your pool of candidate predictor variables in your report.  NOTE: If you need to create additional predictor variables, then you will want to create those predictor variables before you perform the train/test split outlined in (2).  Also note that we will be using our two variables QualityIndex and TotalSqftCalc in this section.
+
+```{r}
+
+library('fastDummies')
+subdata <- dummy_cols(subdata, select_columns = c('Neighborhood','Zoning'),
+           remove_selected_columns = TRUE)
+subdata
+```
+
+```{r}
+# Set the seed on the random number generator so you get the same split every time that
+# you run the code.
+my.data <- subdata
+set.seed(123)
+my.data$u <- runif(n=dim(my.data)[1],min=0,max=1)
+
+# Create train/test split;
+train.df <- subset(my.data, u<0.70);
+test.df  <- subset(my.data, u>=0.70);
+names(train.df)
+
+train.clean <- subset(train.df, select=c("TotalFloorSF","HouseAge",
+                "OverallQual","LotArea","TotalSqftCalc", "Neighborhood_Blmngtn", "Neighborhood_Blueste" ,"Neighborhood_BrDale" , "Neighborhood_BrkSide" ,"Neighborhood_ClearCr", "Neighborhood_CollgCr",
+"Neighborhood_Crawfor", "Neighborhood_Edwards", "Neighborhood_Gilbert", "Neighborhood_Greens" , "Neighborhood_GrnHill", "Neighborhood_IDOTRR" , "Neighborhood_Landmrk", "Neighborhood_MeadowV" ,"Neighborhood_Mitchel", "Neighborhood_NAmes" , 
+"Neighborhood_NoRidge" ,"Neighborhood_NPkVill", "Neighborhood_NridgHt", "Neighborhood_NWAmes",  "Neighborhood_OldTown" ,"Neighborhood_Sawyer" , "Neighborhood_SawyerW" ,"Neighborhood_Somerst", "Neighborhood_StoneBr", "Neighborhood_SWISU", "Neighborhood_Timber","MiscVal","SalePrice"
+                ))
+
+test.clean <- subset(test.df, select=c("TotalFloorSF","HouseAge",
+                                       "OverallQual","LotArea",
+                                       "TotalSqftCalc", "Neighborhood_Blmngtn", "Neighborhood_Blueste" ,"Neighborhood_BrDale" , "Neighborhood_BrkSide" ,"Neighborhood_ClearCr", "Neighborhood_CollgCr",
+"Neighborhood_Crawfor", "Neighborhood_Edwards", "Neighborhood_Gilbert", "Neighborhood_Greens" , "Neighborhood_GrnHill", "Neighborhood_IDOTRR" , "Neighborhood_Landmrk", "Neighborhood_MeadowV" ,"Neighborhood_Mitchel", "Neighborhood_NAmes" , 
+"Neighborhood_NoRidge" ,"Neighborhood_NPkVill", "Neighborhood_NridgHt", "Neighborhood_NWAmes",  "Neighborhood_OldTown" ,"Neighborhood_Sawyer" , "Neighborhood_SawyerW" ,"Neighborhood_Somerst", "Neighborhood_StoneBr", "Neighborhood_SWISU", "Neighborhood_Timber","MiscVal"))
+```
+
+
+
+```{r}
+
+# Check your data split. The sum of the parts should equal the whole.
+# Do your totals add up?
+dim(my.data)[1]
+dim(train.df)[1]
+dim(test.df)[1]
+dim(train.df)[1]+dim(test.df)[1]
+```
+Model Identification:  Using the training data find the 'best' models using automated variable selection using the techniques: forward, backward, and stepwise variable selection using the R function stepAIC() from the MASS library.  Identify (list) each of these three models individually.  Name them forward.lm, backward.lm, and stepwise.lm.  
+Note that variable selection using stepAIC() requires that we specify the upper and lower models in the scope argument.  We want to perform a ‘full search’ or an ‘exhaustive search’, and hence we need to specify the upper model as the Full Model containing every predictor variable in the variable pool (or in our clean data frame!), and the lower model as the Intercept Model.  Both of these models are easy to specify in R.
+Trick #2: specify the upper model and lower models using these R shortcuts.
+
+```{r}
+upper.lm <- lm(SalePrice ~ .,data=train.clean);
+summary(upper.lm)
+```
+```{r}
+# Define the lower model as the Intercept model
+lower.lm <- lm(SalePrice ~ 1,data=train.clean);
+summary(lower.lm)
+```
+
+```{r}
+# Need a SLR to initialize stepwise selection
+sqft.lm <- lm(SalePrice ~ TotalFloorSF,data=train.clean);
+summary(sqft.lm)
+
+```
+Trick #3: use the R function formula() to pass your shortcut definition of the Full Model to the scope argument in stepAIC().  Be sure to read the help page for stepAIC() to understand the scope argument and its default value.
+```{r}
+library(MASS)
+forward.lm <- stepAIC(object=lower.lm,scope=list(upper=upper.lm,lower=lower.lm),
+                      direction=c('forward'));
+summary(forward.lm)
+```
+```{r}
+backward.lm <- stepAIC(object=upper.lm,direction=c('backward'));
+summary(backward.lm)
+
+
+```
+```{r}
+stepwise.lm <- stepAIC(object=sqft.lm,scope=list(upper=formula(upper.lm),lower=~1),
+                       direction=c('both'));
+summary(stepwise.lm)
+```
+Note that we do not specify any data sets when we call stepAIC().  The data set is passed along with the initializing model in the object argument.
+
+In addition to these three models identified using variable selection we will include a fourth model for model comparison purposes.  We will call this model junk.lm.  The model is appropriately named.  Do we know why we are calling this model junk?  Note that this model will use the train.df data frame since I shed all of these columns off of train.df when I created train.clean.
+
+Remember that train.df and train.clean are essentially the same data set, train.df just has more columns than train.clean so it is perfectly okay to compare models fit on train.df with models fit on train.clean.
+```{r}
+junk.lm <- lm(SalePrice ~OverallQual + OverallCond + QualityIndex + GrLivArea + TotalSqftCalc, data=train.df)
+summary(junk.lm)
+```
+Before we go any further we should consider if we like these models.  One issue with using variable selection on a pool that contains highly correlated predictor variables is that the variable selection algorithm will select the highly correlated pairs.  (Hint: do we have correlated predictor variables in the junk model?)
+Compute the VIF values for the variable selection models.  If the models selected highly correlated pairs of predictors that you do not like, then go back, add them to your drop list, and re-perform the variable selection before you go on with the assignment.  The VIF values do not need to be ideal, but if you have a very large VIF value (like 20, 30, 50 etc.), then you should consider removing a variable so that your variable selection models are not junk too.  
+Should we be concerned with VIF values for indicator variables?  Why or why not?  
+
+Answer: I believe VIF values are a good indicator of whether or not the variables are correlated or overly correlated and a cause for concern. With this, one could parse through the models and their variables to see if any variable is or is not correlated. 
+
+Did the different variable selection procedures select the same model or different models?  Display the final estimated models and their VIF values for each of these four models in your report.  
+
+```{r}
+library(car)
+sort(vif(forward.lm),decreasing=TRUE)
+
+```
+```{r}
+sort(vif(backward.lm),decreasing=TRUE)
+
+
+```
+```{r}
+sort(vif(stepwise.lm),decreasing=TRUE)
+
+```
+```{r}
+sort(vif(junk.lm),decreasing=TRUE)
+```
+Answer: Most of the variables are quite correlated in my models, but none are above 10, which is a sign of concern when comparing VIF models. In my models, it is seen how correlated the TotalFloorSF, TotalSqftCalc, and OverallQual is to the logSalePrice, with the Styles, HouseAge, and  lagging behind (which accounted for whether the house was 1 story or two story in terms of dummy variables). The junk model seems to be the worstb of the bunch, as to be expected, as there are over correlating variables which pose concern on the model.
+
+#################################################################################
+#################################################################################
+#################################################################################
+Model Comparison:  Now that we have our final models, we need to compare the in-sample fit and predictive accuracy of our models.  For each of these four models compute the adjusted R-Squared, AIC, BIC, mean squared error, and the mean absolute error for each of these models for the training sample.  Each of these metrics represents some concept of ‘fit’.  In addition to the values provide the rank for each model in each metric.  If a model is #2 in one metric, then is it #2 in all metrics?  Should we expect each metric to give us the same ranking of model ‘fit’.
+
+Answer:
+All of the forward and stepwise models came up with the same results in terms of the fit-statistics (R^2, AIC, BIC, MSE, MAE). The backwards model lacked slightly behind them in R^2, AIC, and BIC values but was had better MSE and MAE scores compared to the forward and stepwise models.  The junk model is what performed the most poorly in all statistics (as to be expected) due to it having less features and not being as clean. 
+
+Models and their values:
+
+```{r}
+summary(forward.lm)
+print(paste("R^2",summary(forward.lm)$r.squared))
+print(paste("AIC",AIC(forward.lm)))
+print(paste("BIC",BIC(forward.lm)))
+print(paste("MSE",mean(forward.lm$residuals^2)))
+library("ie2misc")
+print(paste("MAE",mae(train.clean$SalePrice, predict(forward.lm))))
+```
+
+
+```{r}
+summary(backward.lm)
+print(paste("R^2",summary(backward.lm)$r.squared))
+print(paste("AIC",AIC(backward.lm)))
+print(paste("BIC",BIC(backward.lm)))
+print(paste("MSE",mean(backward.lm$residuals^2)))
+library("ie2misc")
+print(paste("MAE",mae(train.clean$SalePrice, predict(backward.lm))))
+```
+
+
+
+```{r}
+summary(stepwise.lm)
+print(paste("R^2",summary(stepwise.lm)$r.squared))
+print(paste("AIC",AIC(stepwise.lm)))
+print(paste("BIC",BIC(stepwise.lm)))
+print(paste("MSE",mean(stepwise.lm$residuals^2)))
+print(paste("MAE",mae(train.clean$SalePrice, predict(stepwise.lm))))
+```
+
+```{r}
+summary(junk.lm)
+print(paste("R^2",summary(junk.lm)$r.squared))
+print(paste("AIC",AIC(junk.lm)))
+print(paste("BIC",BIC(junk.lm)))
+print(paste("MSE",mean(junk.lm$residuals^2)))
+print(paste("MAE",mae(train.clean$SalePrice, predict(junk.lm))))
+```
+(4)	Predictive Accuracy
+In predictive modeling, we are interested in how well our model performs (predicts) out-of-sample.  That is the point of predictive modeling.  For each of the four models compute the Mean Squared Error (MSE) and the Mean Absolute Error (MAE) for the test sample.  Which model fits the best based on these criteria?  Did the model that fit best in-sample predict the best out-of-sample?  Should we have a preference for the MSE or the MAE?  What does it mean when a model has better predictive accuracy in-sample then it does out-of-sample?
+
+Answer: The first three models (forwards, backwards, and stepwise models) fit the best based on that criteria. I believe those models will predict equally well with the out-of-sample. The MSE and MAE need to be as low as can be to improve the fit on the model. 
+When a model has better predictive accuracy in-sample compared to out of the sample, it means the model is overfitting on the training data and is becoming to accustomed to it in terms of predictions. 
+#################################################################################
+#################################################################################
+#################################################################################
+```{r}
+forward.pct <- abs(forward.lm$residuals)/train.clean$SalePrice;
+MAPE <- mean(forward.pct)
+MAPE
+backward.pct <- abs(backward.lm$residuals)/train.clean$SalePrice;
+MAPE <- mean(backward.pct)
+MAPE
+stepwise.pct <- abs(stepwise.lm$residuals)/train.clean$SalePrice;
+MAPE <- mean(stepwise.pct)
+MAPE
+junk.pct <- abs(junk.lm$residuals)/train.clean$SalePrice;
+MAPE <- mean(junk.pct)
+MAPE
+```
+(5)	Operational Validation
+We have validated these models in the statistical sense, but what about the business sense?  Do MSE or MAE easily translate to the development of a business policy?  
+
+Answer: I think MSE and MAE loosely translate to the development of a business policy because when you need to look at a general trend, it may not be as important to worry too much about the MSE or MAE. However, if it is too high, it may not be a good ploicy you are trying to implement by that logic, and should be evaluated further. 
+
+Typically, in applications we need to be able to hit defined cut-off points, i.e. we set a policy that we need to be p% accurate.  Let's define a variable called PredictionGrade, and consider the predicted value to be 'Grade 1' if it is within ten percent of the actual value, 'Grade 2' if it is not Grade 1 but within fifteen percent of the actual value, Grade 3 if it is not Grade 2 but within twenty-five percent of the actual value, and 'Grade 4' otherwise.  
+
+Produce these prediction grades for the in-sample training data and the out-of-sample test data.  Note that we want to show these tables in distribution form, not counts.  Distribution form is more informative and easier for your reader (and you!) to understand, hence we have normalized the table object. 
+
+
+```{r}
+# Assign Prediction Grades training data;
+forward.PredictionGrade <- ifelse(forward.pct<=0.10,'Grade 1: [0.0.10]',
+                                  ifelse(forward.pct<=0.15,'Grade 2: (0.10,0.15]',
+                                         ifelse(forward.pct<=0.25,'Grade 3: (0.15,0.25]',
+                                                'Grade 4: (0.25+]')
+                                  )					
+)
+
+forward.trainTable <- table(forward.PredictionGrade)
+forward.trainTable/sum(forward.trainTable)
+
+```
+```{r}
+forward.test <- predict(forward.lm,newdata=test.clean);
+backward.test <- predict(backward.lm,newdata=test.clean);
+stepwise.test <- predict(stepwise.lm,newdata=test.clean);
+junk.test <- predict(junk.lm,newdata=test.df);
+```
+```{r}
+# Test Data
+# Abs Pct Error
+forward.testPCT <- abs(test.df$logSalePrice-forward.test)/test.df$SalePrice;
+MAPE <- mean(forward.testPCT)
+MAPE
+backward.testPCT <- abs(test.df$logSalePrice-backward.test)/test.df$SalePrice;
+MAPE <- mean(backward.testPCT)
+MAPE
+stepwise.testPCT <- abs(test.df$logSalePrice-stepwise.test)/test.df$SalePrice;
+MAPE <- mean(stepwise.testPCT)
+MAPE
+junk.testPCT <- abs(test.df$logSalePrice-junk.test)/test.df$SalePrice;
+MAPE <- mean(junk.testPCT)
+MAPE
+```
+```{r}
+# Assign Prediction Grades test data;
+forward.testPredictionGrade <- ifelse(forward.testPCT<=0.10,'Grade 1: [0.0.10]',
+                                      ifelse(forward.testPCT<=0.15,'Grade 2: (0.10,0.15]',
+                                             ifelse(forward.testPCT<=0.25,'Grade 3: (0.15,0.25]',
+                                                    'Grade 4: (0.25+]')
+                                      )					
+)
+
+forward.testTable <-table(forward.testPredictionGrade)
+forward.testTable/sum(forward.testTable)
+```
+How accurate are the models under this definition of predictive accuracy?  How do these results compare to our predictive accuracy results?  Did the model ranking remain the same?
+The models seem to be ok in terms of accuracy to the training data, but does not seem to be the best in predictive accuracy, as it was heavily within Grade 4. I do believe more variables should be added within the model to improve its results, as the existing variables just may not be enough.
+
+Answer: The models seem to be ok in terms of accuracy to the training data, but does not seem to be the best in predictive accuracy, as it was heavily within Grade 4. I do believe more variables should be added within the model to improve its results, as the existing variables just may not be enough.
+
+
+
+
+
+```{r}
+train.clean$predict1=predict(forward.lm)
+train.clean$residual1=train.clean$SalePrice-train.clean$predict1
+summary(train.clean$residual1)
+print(paste('SD:',sd(train.clean$residual1)))
+train.clean$standResid1=(train.clean$residual1-mean(train.clean$residual1))/sd(train.clean$residual1)
+hist(train.clean$standResid1)
+plot(train.clean$predict1,train.clean$standResid1)
+```
+
+
+
+```{r}
+train.clean$predict2=predict(backward.lm)
+train.clean$residual2=train.clean$SalePrice-train.clean$predict2
+summary(train.clean$residual2)
+print(paste('SD:',sd(train.clean$residual2)))
+train.clean$standResid2=(train.clean$residual2-mean(train.clean$residual2))/sd(train.clean$residual2)
+hist(train.clean$standResid2)
+plot(train.clean$predict2,train.clean$standResid2)
+```
+```{r}
+train.clean$predict3=predict(stepwise.lm)
+train.clean$residual3=train.clean$SalePrice-train.clean$predict3
+summary(train.clean$residual3)
+print(paste('SD:',sd(train.clean$residual3)))
+train.clean$standResid3=(train.clean$residual3-mean(train.clean$residual3))/sd(train.clean$residual3)
+hist(train.clean$standResid3)
+plot(train.clean$predict3,train.clean$standResid3)
+```
+
+```{r}
+train.clean$predict4=predict(junk.lm)
+train.clean$residual4=train.clean$SalePrice-train.clean$predict4
+summary(train.clean$residual4)
+print(paste('SD:',sd(train.clean$residual4)))
+train.clean$standResid4=(train.clean$residual4-mean(train.clean$residual4))/sd(train.clean$residual4)
+hist(train.clean$standResid4)
+plot(train.clean$predict4,train.clean$standResid4)
+```
+7) 	For reflection / conclusions:   After working on this problem and this data for several weeks, what are the challenges presented by the data?   What are your recommendations for improving predictive accuracy?   What do you think of the notion of parsimony:  simpler models might be preferable over complicated models?   Do we really need a max fit model or is a simpler but more interpretable model better?
+
+
+This data is very extensive and each variable could have a big impact on the predictivity of the model. Hence, it must be generalized due to such variance in house prices that exist. Even if this does come up with good predictions on the house data, the house does not sell for exactly that price, and should be hence used as a loose estimate.
+Some recommendations to improving accuracy would be to work with outliers, as this may prevent overfitting from occurring in the data. You should also work extensively on preprocessing, but be weary of removing outliers due to this. I
+think a simple model may give you the general gist of things well enough without much time spent on it. Of course a more accurate model is almost always better, but if you are looking for a general estimate, a simple model may be enough to get the job done, especially in such a variable scenario as this one. 
+Still, this assignment allowed me to experimet with many models and come out with the best ones after comparison. It taught a lot. 
