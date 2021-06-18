@@ -1,0 +1,213 @@
+---
+title: "ModellingAssign4"
+output: html_document
+---
+
+```{r }
+library("readxl")
+mydata <- read_excel("wine.xlsx")
+mydata
+```
+
+TASK 1:   EXPLORATORY DATA ANALYSIS and DATA PREP
+
+```{r }
+summary(mydata$Alcohol)
+hist(mydata$Alcohol)
+```
+```{r}
+mydata <- mydata[mydata$Alcohol >= 0, ]
+hist(mydata$Alcohol)
+mydata
+```
+
+Explanation: I removed the negative and zero Alcohol values as those appeared to be errors in the dat. Wine should not have a negative alcohol value.
+
+```{r }
+summary(mydata$Chlorides)
+plot(mydata$Chlorides)
+hist(mydata$Chlorides)
+```
+
+```{r}
+summary(mydata$VolatileAcidity)
+plot(mydata$VolatileAcidity)
+hist(mydata$VolatileAcidity)
+```
+```{r}
+plot(mydata$VolatileAcidity,mydata$Chlorides)
+```
+
+```{r}
+summary(mydata$CitricAcid)
+plot(mydata$CitricAcid)
+hist(mydata$CitricAcid)
+```
+```{r}
+
+summary(mydata$ResidualSugar)
+plot(mydata$ResidualSugar)
+hist(mydata$ResidualSugar)
+```
+
+```{r}
+
+summary(mydata$FreeSulfurDioxide)
+plot(mydata$FreeSulfurDioxide)
+hist(mydata$FreeSulfurDioxide)
+```
+```{r}
+
+summary(mydata$Density)
+plot(mydata$Density)
+hist(mydata$Density)
+```
+
+```{r}
+
+summary(mydata$TotalSulfurDioxide)
+plot(mydata$TotalSulfurDioxide)
+hist(mydata$TotalSulfurDioxide)
+```
+```{r}
+summary(mydata$pH)
+plot(mydata$pH)
+hist(mydata$pH)
+```
+```{r}
+
+summary(mydata$Sulphates)
+plot(mydata$Sulphates)
+hist(mydata$Sulphates)
+```
+```{r}
+
+summary(mydata$AcidIndex)
+plot(mydata$AcidIndex)
+hist(mydata$AcidIndex)
+```
+
+```{r}
+mydata=abs(mydata)
+
+summary(mydata$Sulphates)
+plot(mydata$Sulphates)
+hist(mydata$Sulphates)
+```
+
+```{r}
+mydata$STARS[is.na(mydata$STARS)]=0
+mydata$Purchase[is.na(mydata$Purchase)]=0
+mydata$STARS
+mydata$Purchase
+```
+Explanation: I replacces th NA values in Purchased and STARS with zeros in order to keep enough data entries and have a value for the ones that did not. 
+
+
+
+
+
+```{r}
+summary(mydata$TotalSulfurDioxide)
+plot(mydata$TotalSulfurDioxide)
+hist(mydata$TotalSulfurDioxide)
+```
+```{r}
+
+summary(mydata$TotalSulfurDioxide)
+plot(mydata$TotalSulfurDioxide)
+hist(mydata$TotalSulfurDioxide)
+```
+```{r}
+mydata=mydata
+mydata <- subset (mydata, select = -INDEX)
+```
+TASK 2:   MODELING
+
+I will be conducting my model on the Purchase variable, which would make my models be logistic models since the response variable is binomial. 
+
+My first model is just a test:
+```{r}
+model1=glm(mydata$Purchase~mydata$FixedAcidity+mydata$VolatileAcidity+mydata$CitricAcid, family='binomial')
+model1
+summary(model1)
+```
+My second model runs on all of the response variables. However, this includes the Cases variable, which should be ommitted because if there are cases, it has obviously been purchased. Although this is the best model, as seen with the lowest AIC value, it doesn't do us quite that much in terms of telling us whether or not the wine has been purchased. We need to focus on the other variables. 
+```{r}
+model2=glm(Purchase~.,data=mydata, family='binomial')
+model2
+summary(model2)
+```
+
+This model 4 is run without Cases and STARS. It has significantly improves from my first test model, as seen by the AIC.
+
+```{r}
+model4=glm(Purchase~FixedAcidity+VolatileAcidity+CitricAcid+ResidualSugar+Chlorides+FreeSulfurDioxide+Density+pH+Sulphates+Alcohol+LabelAppeal+AcidIndex,data=mydata,family="binomial")
+model4
+summary(model4)
+```
+Model5 is close to the final model. We included the STARS variable in this model, since it is allowed. The AIC has improved even more. 
+```{r}
+model5=glm(Purchase~STARS+FixedAcidity+VolatileAcidity+CitricAcid+ResidualSugar+Chlorides+FreeSulfurDioxide+Density+pH+Sulphates+Alcohol+LabelAppeal+AcidIndex,data=mydata,family="binomial")
+model5
+summary(model5)
+```
+This was an analysis of how well the STARS variable does when predicting Purchased. It is one of the more powerful variables when analyzed, coming close to the AIC of model4 on its own. However, when compared via VIF values, we can see when connected with other variables it imporves theri relationsips with the Purchase variable as well:
+```{r}
+modelSTARS=glm(Purchase~STARS, data=mydata, family='binomial')
+modelSTARS
+summary(modelSTARS)
+```
+
+```{r}
+set.seed(123)
+mydata$u <- runif(n=dim(mydata)[1],min=0,max=1)
+
+# Create train/test split;
+train.df <- subset(mydata, u<0.70);
+test.df  <- subset(mydata, u>=0.70);
+names(train.df)
+```
+```{r}
+intmodel=glm(Purchase~1,data=train.df,family='binomial')
+fullmodel=glm(Purchase~STARS+FixedAcidity+VolatileAcidity+CitricAcid+ResidualSugar+Chlorides+FreeSulfurDioxide+Density+pH+Sulphates+Alcohol+LabelAppeal+AcidIndex,data=train.df,family="binomial")
+```
+
+
+```{r}
+library(car)
+sort(vif(fullmodel),decreasing=TRUE)
+```
+```{r}
+library(car)
+sort(vif(model4),decreasing=TRUE)
+```
+
+In model2, we can see how the CASES and STARS variables are the most correlating. Still, we will use the fullmodel above as our predictive model, due to its best performance without the Cases variable. 
+```{r}
+sort(vif(model2),decreasing=TRUE)
+```
+
+
+We can se our training model has a performance accuracy of around 79.2% in the table below, performin quite well. 
+
+
+```{r}
+library(rvest)
+trainProb <- fullmodel %>% predict(train.df, type = "response")
+trainPrediction <- ifelse(trainProb > 0.5, 1, 0)
+table(train.df$Purchase, trainPrediction, dnn = c("Purchase", "Predict"))
+```
+Our test set model performa almost as well at 76.2% accuracy. 
+```{r}
+testProb <- fullmodel %>% predict(test.df, type = "response")
+testPrediction <- ifelse(testProb > 0.5, 1, 0)
+table(test.df$Purchase, testPrediction, dnn = c("Purchase", "Predict"))
+```
+```{r}
+plot(model5)
+```
+TASK 3:  CONCLUSIONS AND REFLECTIONS
+
+This assignment allowed me to sort of test what I ghave learned in this class however I wanted to. I felt most comfortable using linear models, so I decided to work on the logistic models to gain an even better understanding for it. It also seemed to be a bit simpler to work with since I would be working with binomial values. In terms of wine, I learned that the Acid levels, Alcohol content, and Label APpeal had the most influence on the purchase decision, as well as of course the amount of Stars is received. The better presented and reviewed the wine, the more likely it is to be bought. The most important parts when it comes to modeling is preprocessing the data, making sure it is usable and makes sense. Negative values for the amount of it within the wine would not make sense, so it was good to assume the absolute value of the entries, which would make a lot more sense.  Next is to figure out what type of model would work best with what you are trying to predict. This was a great assignment to really test your ability on how to model data on your own. 
+
