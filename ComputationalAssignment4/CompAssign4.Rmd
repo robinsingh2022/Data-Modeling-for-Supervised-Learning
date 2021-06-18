@@ -1,0 +1,194 @@
+---
+title: "CompAssign4"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+Ingest:
+```{r }
+mydata <- read.csv(file="NutritionStudy.csv",head=TRUE,sep=",")
+mydata$Alcohol
+```
+
+
+
+```{r }
+
+model1=lm(mydata$Cholesterol~mydata$Fiber)
+model1
+summary(model1)
+cor(mydata$Fiber,mydata$Cholesterol)
+plot(mydata$Fiber, mydata$Cholesterol)
+abline(model1)
+```
+
+```{r}
+mydata$AlcoholHi[mydata$Alcohol >= 10] <- 1
+mydata$AlcoholNone[mydata$Alcohol == 0] <- 1
+mydata$AlcoholMid[mydata$Alcohol > 0 & mydata$Alcohol < 10] <- 1
+mydata[is.na(mydata)] <- 0
+mydata
+```
+
+```{r}
+par(mfrow=c(2,2))
+model2=lm(mydata$Cholesterol~mydata$Fiber+mydata$AlcoholHi+mydata$AlcoholMid)
+model2
+summary(model2)
+plot(model2)
+```
+
+```{r}
+mydata$predict1=predict(model2)
+
+mydata$color[mydata$AlcoholHi==1]="red"
+mydata$color[mydata$AlcoholMid==1]="blue"
+mydata$color[mydata$AlcoholNone==1]="green"
+plot(mydata$Fiber,mydata$predict1, col=mydata$color,pch=19)
+legend(28, 250, legend=c("High Alcohol", "Medium Alcohol", "No Alcohol"),
+       col=c("red", "blue","green"),pch=19,
+       title="Alcohol Consumption", text.font=4, bg='lightblue')
+```
+
+
+```{r}
+plot(mydata$Fiber,mydata$Cholesterol, col=mydata$color,pch=19)
+legend(28, 800, legend=c("High Alcohol", "Medium Alcohol", "No Alcohol"),
+       col=c("red", "blue","green"),pch=19,
+       title="Alcohol Consumption", text.font=4, bg='lightblue')
+```
+
+
+```{r}
+mydata$FiberHiAlc=mydata$Fiber*mydata$AlcoholHi
+mydata$FiberMidAlc=mydata$Fiber*mydata$AlcoholMid
+mydata$FiberNoAlc=mydata$Fiber*mydata$AlcoholNone
+model3=lm(mydata$Cholesterol~mydata$Fiber+mydata$AlcoholHi+mydata$AlcoholMid+mydata$FiberHiAlc+mydata$FiberMidAlc)
+model3
+mydata$predict3=predict(model3)
+plot(mydata$Fiber,mydata$predict3, col=mydata$color, pch=19)
+legend(2, 360, legend=c("High Alcohol", "Medium Alcohol", "No Alcohol"),
+       col=c("red", "blue","green"),pch=19,
+       title="Alcohol Consumption", text.font=4, bg='lightblue')
+```
+```{r}
+model2
+summary(model3)
+anova(model3)
+
+```
+
+
+
+
+```{r}
+anova(model2,model3)
+```
+
+
+
+
+
+```{r}
+mydata$Male[mydata$Gender == 'Male'] <- 1
+mydata$Male[mydata$Gender == 'Female'] <- 0
+
+mydata$SmokeBin[mydata$Smoke == 'Yes'] <- 1
+mydata$SmokeBin[mydata$Smoke == 'No'] <- 0
+
+mydata$VitaminUseReg[mydata$VitaminUse == "Regular"] <- 1
+mydata$VitaminUseOcc[mydata$VitaminUse == "Occasional"] <- 1
+mydata$VitaminUseNo[mydata$VitaminUse == "No"] <- 1
+mydata[is.na(mydata)] <- 0
+mydata
+```
+
+
+```{r}
+model4=lm(mydata$Cholesterol~mydata$Fiber+mydata$Fiber*mydata$Male +mydata$Fiber*mydata$SmokeBin+mydata$Fiber*mydata$VitaminUseReg+mydata$Fiber*mydata$VitaminUseOcc)
+model4
+summary(model4)
+anova(model4)
+par(mfrow=c(2,2))
+plot(model4)
+```
+
+```{r}
+mydata$predict4=predict(model4)
+plot(mydata$Fiber,mydata$predict4, col=mydata$color, pch=19)
+legend(17, 460, legend=c("High Alcohol", "Medium Alcohol", "No Alcohol"),
+       col=c("red", "blue","green"),pch=19,
+       title="Alcohol Consumption", text.font=4, bg='lightblue')
+```
+
+
+
+```{r}
+model5=lm(mydata$Cholesterol~mydata$Fiber*mydata$Male)
+mydata$predict5=predict(model5)
+plot(mydata$Fiber,mydata$predict5, col=mydata$color, pch=19)
+legend(17, 400, legend=c("High Alcohol", "Medium Alcohol", "No Alcohol"),
+       col=c("red", "blue","green"),pch=19,
+       title="Alcohol Consumption", text.font=4, bg='lightblue')
+```
+
+
+
+```{r}
+model5=lm(mydata$Cholesterol~mydata$Fiber*mydata$VitaminUseReg+mydata$Fiber*mydata$VitaminUseOcc)
+mydata$predict5=predict(model5)
+mydata$color2[mydata$VitaminUseReg==1]="red"
+mydata$color2[mydata$VitaminUseOcc==1]="blue"
+mydata$color2[mydata$VitaminUseNo==1]="green"
+plot(mydata$Fiber,mydata$predict5, col=mydata$color2, pch=19)
+legend(5, 340, legend=c("reg vitamin", "occ vit", "No vit"),
+       col=c("red", "blue","green"),pch=19,
+       title="Vitamin Consumption", text.font=4, bg='lightblue')
+
+```
+```{r}
+model5
+summary(model5)
+anova(model5)
+```
+
+
+```{r}
+model5=lm(mydata$Cholesterol~mydata$Fiber*mydata$SmokeBin)
+mydata$predict5=predict(model5)
+mydata$color2[mydata$SmokeBin==1]="red"
+mydata$color2[mydata$SmokeBin==0]="blue"
+plot(mydata$Fiber,mydata$predict5, col=mydata$color2, pch=19)
+legend(5, 350, legend=c("smoking",'not smoking'),
+       col=c("red", "blue"),pch=19,
+       title="Smoking Consumption", text.font=4, bg='lightblue')
+```
+```{r}
+model5
+summary(model5)
+anova(model5)
+```
+
+
+```{r}
+model5=lm(mydata$Cholesterol~mydata$Fiber*mydata$Male)
+mydata$predict5=predict(model5)
+mydata$color2[mydata$Male==1]="red"
+mydata$color2[mydata$Male==0]="blue"
+plot(mydata$Fiber,mydata$predict5, col=mydata$color2, pch=19)
+legend(5, 350, legend=c("Male",'Female'),
+       col=c("red", "blue"),pch=19,
+       title="Sex", text.font=4, bg='lightblue')
+```
+
+```{r}
+model5
+summary(model5)
+anova(model5)
+```
+
