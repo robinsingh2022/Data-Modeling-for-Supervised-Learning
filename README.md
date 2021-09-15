@@ -1,1 +1,1 @@
-# NorthwesternMSDS410
+# NorthwesternMSDS410 Data Modeling for Supervised Learning
